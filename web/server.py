@@ -593,13 +593,17 @@ async function toggleDryRun() {
 function updateDryRunBtn(isDryRun) {
     const btn = document.getElementById('dry-run-btn');
     if (isDryRun) {
+        // DRY mode ON - orange warning color
         btn.className = 'toggle-btn on';
         btn.style.background = '#ff9800';
         btn.style.borderColor = '#ffc107';
+        btn.style.color = '#fff';
     } else {
-        btn.className = 'toggle-btn';
-        btn.style.background = '#4caf50';
-        btn.style.borderColor = '#66bb6a';
+        // DRY mode OFF - inactive grey like other buttons
+        btn.className = 'toggle-btn off';
+        btn.style.background = '#1a1a1a';
+        btn.style.borderColor = '#333';
+        btn.style.color = '#555';
     }
 }
 
@@ -614,17 +618,19 @@ function updateEssModeBtn(essMode) {
     if (!essMode) return;
     
     if (essMode.is_external) {
-        // External control mode - button OFF (grey)
-        btn.className = 'toggle-btn';
-        btn.style.background = '#555';
-        btn.style.borderColor = '#666';
-        btn.innerHTML = '<i class="fas fa-plug me-1"></i>External';
-        btn.title = 'External control mode - click for Optimized without BatteryLife';
-    } else {
-        // Optimized mode - button ON (green)
+        // External control mode - this is our active working mode (green)
         btn.className = 'toggle-btn on';
         btn.style.background = '#2e7d32';
         btn.style.borderColor = '#4caf50';
+        btn.style.color = '#fff';
+        btn.innerHTML = '<i class="fas fa-plug me-1"></i>External';
+        btn.title = 'External control mode - click for Optimized without BatteryLife';
+    } else {
+        // Optimized mode - not our mode (grey)
+        btn.className = 'toggle-btn off';
+        btn.style.background = '#1a1a1a';
+        btn.style.borderColor = '#333';
+        btn.style.color = '#555';
         btn.innerHTML = '<i class="fas fa-bolt me-1"></i>Optimized';
         btn.title = 'Optimized without BatteryLife - click for External control';
     }
