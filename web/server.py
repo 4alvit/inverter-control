@@ -440,7 +440,7 @@ def get_dashboard_html() -> str:
                 </div>
             </div>
             <div class="col-md-4">
-                <div class="card mb-2">
+                <div class="card mb-2" id="ev-section">
                     <div class="card-header"><i class="fas fa-car me-2"></i>EV</div>
                     <div class="card-body py-1">
                         <div class="d-flex justify-content-between align-items-center">
@@ -459,7 +459,7 @@ def get_dashboard_html() -> str:
                         </div>
                     </div>
                 </div>
-                <div class="card">
+                <div class="card" id="water-section">
                     <div class="card-header"><i class="fas fa-faucet me-2"></i>Water</div>
                     <div class="card-body py-1">
                         <div class="d-flex justify-content-between align-items-center">
@@ -483,7 +483,7 @@ def get_dashboard_html() -> str:
                     </div>
                 </div>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-4" id="loads-section">
                 <div class="card">
                     <div class="card-header">Loads</div>
                     <div class="card-body py-1">
@@ -749,7 +749,14 @@ async function updateData() {
             `Out: ${batOut}kWh <span class="dim">(${batOutY})</span>; ` +
             `Δ: ${batDelta}kWh <span class="dim">(${batDeltaY})</span>`;
         
+        // Feature visibility
+        const features = state.features || {};
+        document.getElementById('ev-section').style.display = features.ev !== false ? '' : 'none';
+        document.getElementById('water-section').style.display = features.water !== false ? '' : 'none';
+        document.getElementById('loads-section').style.display = features.ha_loads !== false ? '' : 'none';
+        
         // EV
+        if (features.ev !== false) {
         const evChargingKw = parseFloat(state.ev_charging_kw) || 0;
         document.getElementById('ev-charging').textContent = evChargingKw > 0 ? evChargingKw.toFixed(1) + 'kW' : '0';
         
@@ -763,14 +770,17 @@ async function updateData() {
         }
         document.getElementById('ev-power').textContent = evPowerText;
         document.getElementById('ev-soc').textContent = Math.floor(state.car_soc || 0) + '%';
+        }
         
         // Water - green when valve OFF (safe), red when valve ON (open)
+        if (features.water !== false) {
         const wl = parseInt(state.water_level) || 0;
         const wlEl = document.getElementById('water-level');
         wlEl.textContent = wl + ' cm';
         wlEl.className = 'water-indicator ' + (state.water_valve ? 'low' : 'ok');
         document.getElementById('water-valve').className = 'toggle-btn ' + (state.water_valve ? 'on' : 'off');
         document.getElementById('pump-switch').className = 'toggle-btn ' + (state.pump_switch ? 'on' : 'off');
+        }
         
         // Toggles with friendly names
         const toggleNames = {
@@ -791,6 +801,7 @@ async function updateData() {
         document.getElementById('toggles').innerHTML = togglesHtml;
         
         // Loads (sorted by value, exclude solar_shed)
+        if (features.ha_loads !== false) {
         const loads = state.loads || {};
         const hiddenLoads = ['solar_shed'];
         const sortedLoads = Object.entries(loads)
@@ -800,10 +811,16 @@ async function updateData() {
             `<div class="loads-row"><span class="loads-name">${name}</span><span class="loads-value">${Math.floor(val)}W</span></div>`
         ).join('') + '</div>';
         document.getElementById('loads').innerHTML = sortedLoads.length ? loadsHtml : '<div class="text-muted">No active loads</div>';
+        }
         
         // HA Status with relative time
-        document.getElementById('ha-status').className = 'status-dot ' + (state.ha_connected ? 'online' : 'offline');
-        document.getElementById('ha-status-text').textContent = 'HA: ' + (state.ha_connected ? 'Connected' : 'Disconnected');
+        if (features.ha === false) {
+            document.getElementById('ha-status').className = 'status-dot offline';
+            document.getElementById('ha-status-text').textContent = 'HA: Disabled';
+        } else {
+            document.getElementById('ha-status').className = 'status-dot ' + (state.ha_connected ? 'online' : 'offline');
+            document.getElementById('ha-status-text').textContent = 'HA: ' + (state.ha_connected ? 'Connected' : 'Disconnected');
+        }
         
         // Update relative time
         window.lastUpdateTime = Date.now();

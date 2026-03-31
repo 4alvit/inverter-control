@@ -86,6 +86,24 @@ POWER_LIMIT_MIN = -2300     # Max export (W)
 LOOP_INTERVAL = 0.33        # 3 times per second
 ```
 
+## Optional Features
+
+Features can be enabled/disabled in `config.py`. They auto-disable if `HA_TOKEN` is not configured:
+
+```python
+ENABLE_EV = True           # EV charging monitoring (car SoC, charger power)
+ENABLE_WATER = True        # Water level, pump and valve control
+ENABLE_HA_LOADS = True     # Home Assistant loads monitoring (Vue sensors)
+ENABLE_HA = True           # Home Assistant integration entirely
+```
+
+When disabled:
+- Console output omits the corresponding sections
+- Web UI hides the corresponding cards
+- No HA API calls are made for disabled features
+
+This allows running the inverter control standalone without Home Assistant.
+
 ## Installation
 
 ### From local machine

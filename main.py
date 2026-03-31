@@ -58,7 +58,8 @@ from config import (
     GRID_ZERO_DEADBAND, GRID_CORRECTION_SMALL, DAMPING_FACTOR,
     SOLAR_OUTPUT_OFFSET,
     WEB_PORT, WEB_HOST, INVERTER_STATES, Colors as C,
-    HA_BOOLEANS, HISTORY_INTERVAL, DRY_RUN, TIMEZONE
+    HA_BOOLEANS, HISTORY_INTERVAL, DRY_RUN, TIMEZONE,
+    ENABLE_EV, ENABLE_WATER, ENABLE_HA_LOADS, ENABLE_HA
 )
 
 # Optional SSL config
@@ -413,23 +414,34 @@ class InverterController:
         if solar_total == 0:
             solar_str = f"{C.CYAN}0{C.RESET}"
         
-        # Loads (rounded to int)
-        loads_parts = []
-        for name, key in [('g', 'garage'), ('f', 'fridge'), ('h', 'furnace'), 
-                          ('s', 'stove'), ('m', 'microwave'), ('k', 'kitchen_fridge_side'),
-                          ('d', 'dishwasher'), ('l', 'lost')]:
-            val = int(self.ha.get_sensor(key, 0))
-            if val > 19:  # Only show loads > 19W
-                loads_parts.append(f"{val}{name}")
-        loads_str = ' '.join(loads_parts) if loads_parts else ""
+        # Loads (conditional)
+        if ENABLE_HA_LOADS:
+            loads_parts = []
+            for name, key in [('g', 'garage'), ('f', 'fridge'), ('h', 'furnace'), 
+                              ('s', 'stove'), ('m', 'microwave'), ('k', 'kitchen_fridge_side'),
+                              ('d', 'dishwasher'), ('l', 'lost')]:
+                val = int(self.ha.get_sensor(key, 0))
+                if val > 19:  # Only show loads > 19W
+                    loads_parts.append(f"{val}{name}")
+            loads_str = ' '.join(loads_parts) if loads_parts else ""
+        else:
+            loads_str = ""
         
-        # Water level (int)
-        water_level = int(self.ha.get_sensor('water_level', 0))
-        water_valve = self.ha.water_valve_on
-        water_color = C.RED if water_valve else C.YELLOW
+        # Water level (conditional)
+        if ENABLE_WATER:
+            water_level = int(self.ha.get_sensor('water_level', 0))
+            water_valve = self.ha.water_valve_on
+            water_color = C.RED if water_valve else C.YELLOW
+            water_str = f"{water_color}{water_level}cm{C.RESET}"
+        else:
+            water_str = ""
         
-        # Car SoC (int)
-        car_soc = int(self.ha.get_sensor('car_soc', 0))
+        # Car SoC (conditional)
+        if ENABLE_EV:
+            car_soc = int(self.ha.get_sensor('car_soc', 0))
+            car_str = f"{C.YELLOW}{car_soc}%{C.RESET}"
+        else:
+            car_str = ""
         
         # Time remaining for appliances
         washer = self.ha.get_sensor('washer_time', '')
@@ -465,7 +477,7 @@ class InverterController:
             f"{tt}({t1}+{t2}) tt:{home_total} "
             f"{C.YELLOW}[{inv_state_name}]{bp}W,{comp_v}%,{soc1}%,{soc2}%{C.RESET} "
             f"{solar_str} {loads_str} "
-            f"{water_color}{water_level}cm{C.YELLOW}{car_soc}%{C.RESET}"
+            f"{water_str}{car_str}"
             f"{washer}{dryer}{dishwasher_dur} {bv:.2f}"
         )
         
@@ -551,17 +563,27 @@ class InverterController:
             'battery_voltage': sys_data.get('bv', 0),
             'battery_soc': sys_data.get('soc', 0) or self.ha.get_sensor('corrected_soc', 0),
             'battery_socs': self._cached_battery_socs,
-            'ev_power': self.ha.get_vue_sensor('ev_charger', 0),
-            'ev_charging_kw': self.ha.get_sensor('ev_charging_power', 0),
-            'car_soc': self.ha.get_sensor('car_soc', 0),
-            'water_level': self.ha.get_sensor('water_level', 0),
-            'water_valve': self.ha.water_valve_on,
-            'pump_switch': self.ha.pump_switch_on,
-            'booleans': self.ha.get_all_booleans(),
-            'daily_stats': daily_stats,
-            'loads': self.ha.get_all_vue_sensors(),
-            'ha_connected': self.ha.connected,
-            'ha_uptime': self.ha.uptime,
+            # EV data (conditional)
+            'ev_power': self.ha.get_vue_sensor('ev_charger', 0) if ENABLE_EV else 0,
+            'ev_charging_kw': self.ha.get_sensor('ev_charging_power', 0) if ENABLE_EV else 0,
+            'car_soc': self.ha.get_sensor('car_soc', 0) if ENABLE_EV else 0,
+            # Water data (conditional)
+            'water_level': self.ha.get_sensor('water_level', 0) if ENABLE_WATER else 0,
+            'water_valve': self.ha.water_valve_on if ENABLE_WATER else False,
+            'pump_switch': self.ha.pump_switch_on if ENABLE_WATER else False,
+            # HA data (conditional)
+            'booleans': self.ha.get_all_booleans() if ENABLE_HA else {},
+            'daily_stats': daily_stats if ENABLE_HA else {},
+            'loads': self.ha.get_all_vue_sensors() if ENABLE_HA_LOADS else {},
+            'ha_connected': self.ha.connected if ENABLE_HA else False,
+            'ha_uptime': self.ha.uptime if ENABLE_HA else 0,
+            # Feature flags for UI
+            'features': {
+                'ev': ENABLE_EV,
+                'water': ENABLE_WATER,
+                'ha_loads': ENABLE_HA_LOADS,
+                'ha': ENABLE_HA,
+            },
             'limits': {'min': self.power_limit_min, 'max': self.power_limit_max},
             'loop_interval': self.loop_interval,
             'ess_mode': self.victron.get_ess_mode(),
