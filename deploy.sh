@@ -37,7 +37,7 @@ ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR/web"
 # Copy all files in parallel using tar (faster than multiple scp)
 echo ">>> Copying files..."
 tar -cf - -C "$SCRIPT_DIR" \
-    config.py main.py victron.py homeassistant.py install.sh healthcheck.sh \
+    config.py main.py victron.py homeassistant.py install.sh healthcheck.sh keepalive.py \
     web/__init__.py web/server.py \
     $([ -f "$SCRIPT_DIR/secrets.py" ] && echo "secrets.py") \
     2>/dev/null | ssh "$SSH_HOST" "tar -xf - -C $REMOTE_DIR"
@@ -47,9 +47,16 @@ if [ "$FULL_INSTALL" = true ]; then
     echo ">>> Running full install..."
     ssh "$SSH_HOST" "chmod +x $REMOTE_DIR/main.py $REMOTE_DIR/install.sh && cd $REMOTE_DIR && ./install.sh"
 else
-    # Quick update: just restart service (minimal downtime ~1-2 sec)
-    echo ">>> Quick restart (minimal downtime)..."
+    # Quick update with keepalive (zero-downtime)
+    echo ">>> Starting keepalive process..."
+    ssh "$SSH_HOST" "cd $REMOTE_DIR && python3 keepalive.py &" &
+    KEEPALIVE_PID=$!
+    sleep 1
+    
+    echo ">>> Restarting service..."
     ssh "$SSH_HOST" "svc -t /service/inverter-control 2>/dev/null || true"
+    
+    # Keepalive will exit automatically when main process responds
 fi
 
 # Wait for service to come up
