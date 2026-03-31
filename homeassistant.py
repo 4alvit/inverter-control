@@ -305,44 +305,42 @@ class HomeAssistantClient:
         """Toggle a switch or input_boolean"""
         try:
             domain = entity_id.split('.')[0]
-            response = requests.post(
+            response = self._session.post(
                 f"{HA_URL}/api/services/{domain}/toggle",
-                headers=self._headers,
                 json={"entity_id": entity_id},
-                timeout=HA_TIMEOUT
+                timeout=(3, HA_TIMEOUT)
             )
             return response.status_code == 200
-        except:
+        except Exception as e:
+            logger.warning(f"Toggle {entity_id} failed: {e}")
             return False
     
     def turn_on(self, entity_id: str) -> bool:
         """Turn on a switch or light"""
         try:
             domain = entity_id.split('.')[0]
-            service = 'turn_on'
-            response = requests.post(
-                f"{HA_URL}/api/services/{domain}/{service}",
-                headers=self._headers,
+            response = self._session.post(
+                f"{HA_URL}/api/services/{domain}/turn_on",
                 json={"entity_id": entity_id},
-                timeout=HA_TIMEOUT
+                timeout=(3, HA_TIMEOUT)
             )
             return response.status_code == 200
-        except:
+        except Exception as e:
+            logger.warning(f"Turn on {entity_id} failed: {e}")
             return False
     
     def turn_off(self, entity_id: str) -> bool:
         """Turn off a switch or light"""
         try:
             domain = entity_id.split('.')[0]
-            service = 'turn_off'
-            response = requests.post(
-                f"{HA_URL}/api/services/{domain}/{service}",
-                headers=self._headers,
+            response = self._session.post(
+                f"{HA_URL}/api/services/{domain}/turn_off",
                 json={"entity_id": entity_id},
-                timeout=HA_TIMEOUT
+                timeout=(3, HA_TIMEOUT)
             )
             return response.status_code == 200
-        except:
+        except Exception as e:
+            logger.warning(f"Turn off {entity_id} failed: {e}")
             return False
     
     def control_dump_loads(self, turn_on: bool) -> int:
