@@ -15,6 +15,10 @@ This Python application controls a Victron inverter to maintain zero grid feed-i
                     [Loads L2] ←------ Grid L2 (no inverter)
 ```
 
+## Screenshot
+
+![Web Dashboard](images/Screenshot.png)
+
 ## Features
 
 - **Grid-Zero Control**: Maintains net zero power at the utility meter
