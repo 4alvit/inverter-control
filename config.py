@@ -29,17 +29,20 @@ except ImportError:
     HA_BINARY_SENSORS = {}
 
 # Optional laundry controls (may not exist in older secrets.py)
+# Import each separately to handle partial configurations
 try:
-    from secrets import HA_WASHER_POWER, HA_DRYER_POWER, HA_LAUNDRY_OUTLET
+    from secrets import HA_WASHER_POWER
 except ImportError:
     HA_WASHER_POWER = ""
-    HA_DRYER_POWER = ""
-    HA_LAUNDRY_OUTLET = ""
 
-# Handle partial imports (some variables exist, some don't)
 try:
-    HA_LAUNDRY_OUTLET
-except NameError:
+    from secrets import HA_DRYER_POWER
+except ImportError:
+    HA_DRYER_POWER = ""
+
+try:
+    from secrets import HA_LAUNDRY_OUTLET
+except ImportError:
     HA_LAUNDRY_OUTLET = ""
 
 # =============================================================================
