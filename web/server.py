@@ -255,6 +255,11 @@ def get_dashboard_html() -> str:
             background: #1a1a1a; 
             color: #555;
         }
+        .toggle-btn.dry-on {
+            background: #ff9800;
+            border-color: #ffc107;
+            color: #fff;
+        }
         .toggle-btn:hover {
             transform: scale(1.02);
             filter: brightness(1.1);
@@ -592,18 +597,14 @@ async function toggleDryRun() {
 
 function updateDryRunBtn(isDryRun) {
     const btn = document.getElementById('dry-run-btn');
+    // Clear any inline styles
+    btn.style.cssText = '';
     if (isDryRun) {
         // DRY mode ON - orange warning color
-        btn.className = 'toggle-btn on';
-        btn.style.background = '#ff9800';
-        btn.style.borderColor = '#ffc107';
-        btn.style.color = '#fff';
+        btn.className = 'toggle-btn dry-on';
     } else {
-        // DRY mode OFF - inactive grey like other buttons
+        // DRY mode OFF - same as other inactive buttons
         btn.className = 'toggle-btn off';
-        btn.style.background = '#1a1a1a';
-        btn.style.borderColor = '#333';
-        btn.style.color = '#555';
     }
 }
 
@@ -617,20 +618,24 @@ function updateEssModeBtn(essMode) {
     const btn = document.getElementById('ess-mode-btn');
     if (!essMode) return;
     
-    if (essMode.is_external) {
-        // External control mode - this is our active working mode (green)
+    // Clear any inline styles
+    btn.style.cssText = '';
+    
+    const modeName = essMode.mode_name || '';
+    
+    if (modeName === 'Off' || modeName === 'Charger only') {
+        // Victron is off or not inverting - grey inactive
+        btn.className = 'toggle-btn off';
+        btn.innerHTML = '<i class="fas fa-power-off me-1"></i>' + modeName;
+        btn.title = 'Victron is ' + modeName;
+    } else if (essMode.is_external) {
+        // External control mode - active green
         btn.className = 'toggle-btn on';
-        btn.style.background = '#2e7d32';
-        btn.style.borderColor = '#4caf50';
-        btn.style.color = '#fff';
         btn.innerHTML = '<i class="fas fa-plug me-1"></i>External';
         btn.title = 'External control mode - click for Optimized without BatteryLife';
     } else {
-        // Optimized mode - not our mode (grey)
-        btn.className = 'toggle-btn off';
-        btn.style.background = '#1a1a1a';
-        btn.style.borderColor = '#333';
-        btn.style.color = '#555';
+        // Optimized mode - also active green (it's a working mode)
+        btn.className = 'toggle-btn on';
         btn.innerHTML = '<i class="fas fa-bolt me-1"></i>Optimized';
         btn.title = 'Optimized without BatteryLife - click for External control';
     }
