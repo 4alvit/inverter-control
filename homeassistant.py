@@ -166,52 +166,52 @@ class HomeAssistantClient:
         # Use template API for batch fetch (much faster)
         template = self._build_template()
         
-        response = self._session.post(
-            f"{HA_URL}/api/template",
-            json={"template": template},
-            timeout=(3, HA_TIMEOUT)  # (connect_timeout, read_timeout)
-        )
-            
-            if response.status_code != 200:
-                raise Exception(f"HA API error: {response.status_code}")
-            
-            data = response.json()
-            if not isinstance(data, dict):
-                raise Exception("Invalid response format")
-            
-            with self._lock:
-                # Parse sensors
-                for key in HA_SENSORS:
-                    if key in data:
-                        self._sensors[key] = self._parse_numeric(data[key])
-                
-                # Parse VUE sensors
-                for key in VUE_SENSORS:
-                    if key in data:
-                        self._vue_sensors[key] = self._parse_numeric(data[key])
-                
-                # Parse booleans
-                for key in HA_BOOLEANS:
-                    if key in data:
-                        self._booleans[key] = data[key] == 'on'
-                
-                # Parse binary sensors
-                for key in HA_BINARY_SENSORS:
-                    if key in data:
-                        self._binary_sensors[key] = data[key] == 'on'
-                
-                # Water valve
-                if 'water_valve' in data:
-                    self._water_valve = data['water_valve'] == 'on'
-                
-                # Pump switch
-                if 'pump_switch' in data:
-                    self._pump_switch = data['pump_switch'] == 'on'
-                    
+        try:
+            response = self._session.post(
+                f"{HA_URL}/api/template",
+                json={"template": template},
+                timeout=(3, HA_TIMEOUT)  # (connect_timeout, read_timeout)
+            )
         except requests.exceptions.Timeout:
             raise Exception("HA timeout")
         except requests.exceptions.ConnectionError:
             raise Exception("HA connection failed")
+        
+        if response.status_code != 200:
+            raise Exception(f"HA API error: {response.status_code}")
+        
+        data = response.json()
+        if not isinstance(data, dict):
+            raise Exception("Invalid response format")
+        
+        with self._lock:
+            # Parse sensors
+            for key in HA_SENSORS:
+                if key in data:
+                    self._sensors[key] = self._parse_numeric(data[key])
+            
+            # Parse VUE sensors
+            for key in VUE_SENSORS:
+                if key in data:
+                    self._vue_sensors[key] = self._parse_numeric(data[key])
+            
+            # Parse booleans
+            for key in HA_BOOLEANS:
+                if key in data:
+                    self._booleans[key] = data[key] == 'on'
+            
+            # Parse binary sensors
+            for key in HA_BINARY_SENSORS:
+                if key in data:
+                    self._binary_sensors[key] = data[key] == 'on'
+            
+            # Water valve
+            if 'water_valve' in data:
+                self._water_valve = data['water_valve'] == 'on'
+            
+            # Pump switch
+            if 'pump_switch' in data:
+                self._pump_switch = data['pump_switch'] == 'on'
     
     def _build_template(self) -> str:
         """Build Jinja2 template for batch fetch"""
