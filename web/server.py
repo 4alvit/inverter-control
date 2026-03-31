@@ -524,8 +524,8 @@ def get_dashboard_html() -> str:
                     <div class="card-header"><i class="fas fa-plug me-2"></i>Laundry</div>
                     <div class="card-body py-1">
                         <div class="d-flex justify-content-between align-items-center">
-                            <span class="small text-muted">Smart outlet</span>
-                            <div id="laundry-outlet" class="toggle-btn" onclick="toggle('switch.laundry_zigbee_switch')">OUTLET</div>
+                            <span class="small text-vue">Laundry island</span>
+                            <div id="laundry-outlet" class="toggle-btn off" onclick="toggle('switch.laundry_zigbee_switch')">OUTLET</div>
                         </div>
                     </div>
                 </div>
