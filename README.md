@@ -9,7 +9,7 @@ This Python application controls a Victron inverter to maintain zero grid feed-i
 ```
 [Solar] → [MPPT] → [Battery] ← → [Inverter] ← → [Grid L1]
                                       ↓
-[Tasmota PV] → [AC Grid] ←-----------|
+[Tasmota PV] → [AC Grid] ←------------|
                                       |
                     [Loads L1] ←------|
                     [Loads L2] ←------ Grid L2 (no inverter)
@@ -235,15 +235,6 @@ dbus -y com.victronenergy.system / GetValue
 # Test from Venus OS
 curl -H "Authorization: Bearer YOUR_HA_TOKEN" \
      http://YOUR_HA_IP:8123/api/states/sensor.your_sensor
-```
-
-### Screen not attaching
-```bash
-# List screen sessions
-screen -ls
-
-# Force create new session
-screen -dmS inverter
 ```
 
 ## Dependencies
