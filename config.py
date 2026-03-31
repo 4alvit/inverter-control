@@ -42,6 +42,9 @@ except ImportError:
 ENABLE_EV = True           # EV charging monitoring (car SoC, VUE charger power)
 ENABLE_WATER = True        # Water level, pump and valve control
 ENABLE_HA_LOADS = True     # Home Assistant loads monitoring (Vue sensors)
+ENABLE_DISHWASHER = True   # Dishwasher duration monitoring
+ENABLE_WASHER = True       # Washer remaining time monitoring
+ENABLE_DRYER = True        # Dryer remaining time monitoring
 ENABLE_HA = True           # Home Assistant integration entirely
 
 # Auto-disable all HA features if no valid token configured
@@ -50,6 +53,9 @@ if HA_TOKEN in ("", "your_token_here", None):
     ENABLE_EV = False
     ENABLE_WATER = False
     ENABLE_HA_LOADS = False
+    ENABLE_DISHWASHER = False
+    ENABLE_WASHER = False
+    ENABLE_DRYER = False
     print("INFO: Home Assistant disabled (no valid HA_TOKEN in secrets.py)")
 
 # =============================================================================

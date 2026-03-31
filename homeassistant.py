@@ -12,7 +12,8 @@ from typing import Dict, Any, Optional
 from config import (
     HA_URL, HA_TOKEN, HA_TIMEOUT, HA_POLL_INTERVAL,
     HA_SENSORS, HA_BOOLEANS, HA_BINARY_SENSORS,
-    HA_DUMP_LOADS, HA_WATER_VALVE, HA_PUMP_SWITCH, VUE_SENSORS
+    HA_DUMP_LOADS, HA_WATER_VALVE, HA_PUMP_SWITCH, VUE_SENSORS,
+    ENABLE_DISHWASHER, ENABLE_WASHER, ENABLE_DRYER, ENABLE_WATER
 )
 
 logger = logging.getLogger('inverter-control')
@@ -215,28 +216,47 @@ class HomeAssistantClient:
     
     def _build_template(self) -> str:
         """Build Jinja2 template for batch fetch"""
-        parts = ['{']
+        # Keys to skip based on disabled features
+        skip_sensors = set()
+        skip_binary = set()
         
-        # Sensors
+        if not ENABLE_DISHWASHER:
+            skip_sensors.add('dishwasher_duration')
+            skip_binary.add('dishwasher_running')
+        if not ENABLE_WASHER:
+            skip_sensors.add('washer_time')
+        if not ENABLE_DRYER:
+            skip_sensors.add('dryer_time')
+        if not ENABLE_WATER:
+            skip_sensors.add('water_level')
+        
+        parts = ['{']
+        items = []
+        
+        # Sensors (skip disabled)
         for key, entity in HA_SENSORS.items():
-            parts.append(f'  "{key}": "{{{{ states("{entity}") }}}}",')
+            if key not in skip_sensors:
+                items.append(f'  "{key}": "{{{{ states("{entity}") }}}}"')
         
         # VUE sensors
         for key, entity in VUE_SENSORS.items():
-            parts.append(f'  "{key}": "{{{{ states("{entity}") }}}}",')
+            items.append(f'  "{key}": "{{{{ states("{entity}") }}}}"')
         
         # Booleans
         for key, entity in HA_BOOLEANS.items():
-            parts.append(f'  "{key}": "{{{{ states("{entity}") }}}}",')
+            items.append(f'  "{key}": "{{{{ states("{entity}") }}}}"')
         
-        # Binary sensors
+        # Binary sensors (skip disabled)
         for key, entity in HA_BINARY_SENSORS.items():
-            parts.append(f'  "{key}": "{{{{ states("{entity}") }}}}",')
+            if key not in skip_binary:
+                items.append(f'  "{key}": "{{{{ states("{entity}") }}}}"')
         
-        # Water valve and pump
-        parts.append(f'  "water_valve": "{{{{ states("{HA_WATER_VALVE}") }}}}",')
-        parts.append(f'  "pump_switch": "{{{{ states("{HA_PUMP_SWITCH}") }}}}"')
+        # Water valve and pump (only if water enabled)
+        if ENABLE_WATER:
+            items.append(f'  "water_valve": "{{{{ states("{HA_WATER_VALVE}") }}}}"')
+            items.append(f'  "pump_switch": "{{{{ states("{HA_PUMP_SWITCH}") }}}}"')
         
+        parts.append(',\n'.join(items))
         parts.append('}')
         return '\n'.join(parts)
     

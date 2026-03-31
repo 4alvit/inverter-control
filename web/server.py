@@ -479,6 +479,33 @@ def get_dashboard_html() -> str:
                         </div>
                     </div>
                 </div>
+                <div class="card" id="dishwasher-section" style="display:none;">
+                    <div class="card-header"><i class="fas fa-sink me-2"></i>Dishwasher</div>
+                    <div class="card-body py-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Running for</span>
+                            <span id="dishwasher-duration" class="fw-bold">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card" id="washer-section" style="display:none;">
+                    <div class="card-header"><i class="fas fa-soap me-2"></i>Washer</div>
+                    <div class="card-body py-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Time left</span>
+                            <span id="washer-time" class="fw-bold">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card" id="dryer-section" style="display:none;">
+                    <div class="card-header"><i class="fas fa-wind me-2"></i>Dryer</div>
+                    <div class="card-body py-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span>Time left</span>
+                            <span id="dryer-time" class="fw-bold">--</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -558,6 +585,20 @@ def get_dashboard_html() -> str:
 <script>
 let chart;
 let updateToggle = false;
+
+function formatDuration(minutes) {
+    // Format duration in minutes to human-readable string
+    const mins = Math.floor(minutes);
+    if (mins < 60) {
+        return mins + ' min';
+    }
+    const hours = Math.floor(mins / 60);
+    const remainMins = mins % 60;
+    if (remainMins === 0) {
+        return hours + 'h';
+    }
+    return hours + 'h ' + remainMins + 'm';
+}
 
 function initChart() {
     const ctx = document.getElementById('powerChart').getContext('2d');
@@ -811,6 +852,33 @@ async function updateData() {
         wlEl.className = 'water-indicator ' + (state.water_valve ? 'low' : 'ok');
         document.getElementById('water-valve').className = 'toggle-btn ' + (state.water_valve ? 'on' : 'off');
         document.getElementById('pump-switch').className = 'toggle-btn ' + (state.pump_switch ? 'on' : 'off');
+        }
+        
+        // Dishwasher - show only when running
+        if (features.dishwasher !== false && state.dishwasher_running) {
+            document.getElementById('dishwasher-section').style.display = '';
+            const duration = state.dishwasher_duration || 0;
+            document.getElementById('dishwasher-duration').textContent = formatDuration(duration);
+        } else {
+            document.getElementById('dishwasher-section').style.display = 'none';
+        }
+        
+        // Washer - show only when time remaining
+        const washerTime = parseFloat(state.washer_time) || 0;
+        if (features.washer !== false && washerTime > 0) {
+            document.getElementById('washer-section').style.display = '';
+            document.getElementById('washer-time').textContent = formatDuration(washerTime);
+        } else {
+            document.getElementById('washer-section').style.display = 'none';
+        }
+        
+        // Dryer - show only when time remaining
+        const dryerTime = parseFloat(state.dryer_time) || 0;
+        if (features.dryer !== false && dryerTime > 0) {
+            document.getElementById('dryer-section').style.display = '';
+            document.getElementById('dryer-time').textContent = formatDuration(dryerTime);
+        } else {
+            document.getElementById('dryer-section').style.display = 'none';
         }
         
         // Toggles with friendly names

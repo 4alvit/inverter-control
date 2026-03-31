@@ -60,7 +60,8 @@ from config import (
     SOLAR_OUTPUT_OFFSET,
     WEB_PORT, WEB_HOST, INVERTER_STATES, Colors as C,
     HA_BOOLEANS, HISTORY_INTERVAL, DRY_RUN, TIMEZONE,
-    ENABLE_EV, ENABLE_WATER, ENABLE_HA_LOADS, ENABLE_HA
+    ENABLE_EV, ENABLE_WATER, ENABLE_HA_LOADS, ENABLE_HA,
+    ENABLE_DISHWASHER, ENABLE_WASHER, ENABLE_DRYER
 )
 
 # Optional SSL config
@@ -573,6 +574,11 @@ class InverterController:
             'water_level': self.ha.get_sensor('water_level', 0) if ENABLE_WATER else 0,
             'water_valve': self.ha.water_valve_on if ENABLE_WATER else False,
             'pump_switch': self.ha.pump_switch_on if ENABLE_WATER else False,
+            # Appliances (conditional)
+            'dishwasher_running': self.ha.get_binary_sensor('dishwasher_running') if ENABLE_DISHWASHER else False,
+            'dishwasher_duration': self.ha.get_sensor('dishwasher_duration', 0) if ENABLE_DISHWASHER else 0,
+            'washer_time': self.ha.get_sensor('washer_time', 0) if ENABLE_WASHER else 0,
+            'dryer_time': self.ha.get_sensor('dryer_time', 0) if ENABLE_DRYER else 0,
             # HA data (conditional)
             'booleans': self.ha.get_all_booleans() if ENABLE_HA else {},
             'daily_stats': daily_stats if ENABLE_HA else {},
@@ -585,6 +591,9 @@ class InverterController:
                 'water': ENABLE_WATER,
                 'ha_loads': ENABLE_HA_LOADS,
                 'ha': ENABLE_HA,
+                'dishwasher': ENABLE_DISHWASHER,
+                'washer': ENABLE_WASHER,
+                'dryer': ENABLE_DRYER,
             },
             'limits': {'min': self.power_limit_min, 'max': self.power_limit_max},
             'loop_interval': self.loop_interval,
