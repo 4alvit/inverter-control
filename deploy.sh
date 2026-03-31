@@ -47,16 +47,10 @@ if [ "$FULL_INSTALL" = true ]; then
     echo ">>> Running full install..."
     ssh "$SSH_HOST" "chmod +x $REMOTE_DIR/main.py $REMOTE_DIR/install.sh && cd $REMOTE_DIR && ./install.sh"
 else
-    # Quick update with keepalive (zero-downtime)
-    echo ">>> Starting keepalive process..."
-    ssh "$SSH_HOST" "cd $REMOTE_DIR && python3 keepalive.py &" &
-    KEEPALIVE_PID=$!
-    sleep 1
-    
+    # Quick update: just restart the service
+    # Note: keepalive removed - it was causing issues and the restart is fast enough
     echo ">>> Restarting service..."
     ssh "$SSH_HOST" "svc -t /service/inverter-control 2>/dev/null || true"
-    
-    # Keepalive will exit automatically when main process responds
 fi
 
 # Wait for service to come up
