@@ -247,7 +247,6 @@ screen -dmS inverter
 - Python 3.x (included in Venus OS)
 - requests (for HA API)
 - D-Bus (for Victron communication)
-- screen (for console access)
 
 ## License
 
