@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# SSL certificates (generated locally)
+*.pem
+*.crt
+*.key
+
+# Logs
+*.log
+
+# Local config overrides
+config.local.py
+
+# Secrets (contains API keys, tokens, IPs)
+secrets.py
+
+# Old scripts (contain hardcoded tokens)
+inverter.sh
+inverter.py

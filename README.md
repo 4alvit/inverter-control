@@ -1,0 +1,254 @@
+# Inverter Control
+
+Grid-zero feed-in controller for Victron systems with split-phase compensation.
+
+## Overview
+
+This Python application controls a Victron inverter to maintain zero grid feed-in/consumption while supporting various operating modes. It's designed for split-phase (120/240V) systems where L2 loads need to be compensated by L1 export.
+
+```
+[Solar] → [MPPT] → [Battery] ← → [Inverter] ← → [Grid L1]
+                                      ↓
+[Tasmota PV] → [AC Grid] ←-----------|
+                                      |
+                    [Loads L1] ←------|
+                    [Loads L2] ←------ Grid L2 (no inverter)
+```
+
+## Features
+
+- **Grid-Zero Control**: Maintains net zero power at the utility meter
+- **Split-Phase Compensation**: Exports on L1 to offset L2 consumption
+- **Multiple Operating Modes**:
+  - Normal: Automatic grid-zero targeting
+  - Only Charging: Use solar only, don't discharge battery
+  - No Feed: Only use Tasmota PV, no battery
+  - House Support: Tasmota PV minus 300W
+  - Charge Battery: Force battery charging
+  - Do Not Supply Charger: EV charges from grid only
+- **Minimize Charging**: Auto-control dump loads to consume excess solar
+- **Web Dashboard**: Real-time monitoring and control
+- **Home Assistant Integration**: Sensor data and switch control
+- **Fast Control Loop**: 3 updates per second via D-Bus
+
+## Architecture
+
+```
+inverter_control/
+├── config.py           # Non-sensitive parameters
+├── secrets.py          # Sensitive config (not in git)
+├── secrets.example.py  # Template for secrets.py
+├── main.py             # Main control loop and console output
+├── victron.py          # D-Bus interface for Victron devices
+├── homeassistant.py    # HA API with caching and fallback
+├── web/
+│   ├── server.py       # HTTP server and dashboard
+│   └── __init__.py
+├── deploy.sh           # Deploy to Venus OS
+├── install.sh          # Install on Venus OS
+├── LOGIC.md            # Control logic documentation (EN)
+├── LOGIC_RUS.md        # Control logic documentation (RU)
+└── README.md
+```
+
+## Configuration
+
+1. Copy `secrets.example.py` to `secrets.py`
+2. Edit `secrets.py` with your actual values:
+
+```python
+# Home Assistant connection
+HA_URL = "http://YOUR_HA_IP:8123"
+HA_TOKEN = "your_long_lived_access_token"
+
+# Victron Portal ID (from VRM)
+PORTAL_ID = "your_portal_id"
+
+# Tasmota device IPs
+TASMOTA_IPS = ['192.168.x.x', '192.168.x.x']
+
+# HA Sensors, VUE sensors, booleans, etc.
+# See secrets.example.py for full template
+```
+
+3. Edit `config.py` for non-sensitive parameters:
+
+```python
+# Power limits (protect outlet from overheating)
+POWER_LIMIT_MAX = 2250      # Max feed-in (W)
+POWER_LIMIT_MIN = -2300     # Max export (W)
+
+# Control loop timing
+LOOP_INTERVAL = 0.33        # 3 times per second
+```
+
+## Installation
+
+### From local machine
+
+```bash
+cd inverter_control
+./deploy.sh Cerbo    # 'Cerbo' is SSH host alias
+```
+
+### Manual installation on Venus OS
+
+```bash
+# Copy files to Venus OS
+scp -r inverter_control root@cerbo:/data/
+
+# SSH to Venus OS
+ssh root@cerbo
+
+# Run installer
+cd /data/inverter_control
+./install.sh
+```
+
+## Usage
+
+### Service Management
+
+```bash
+# Check status
+svstat /service/inverter-control
+
+# Restart
+svc -t /service/inverter-control
+
+# Stop
+svc -d /service/inverter-control
+
+# View logs
+tail -f /var/log/inverter-control/current | tai64nlocal
+```
+
+### Console Access
+
+```bash
+# Attach to screen session
+screen -r inverter
+
+# Detach from screen
+Ctrl+A, D
+```
+
+### Web Dashboard
+
+Open `http://<cerbo-ip>:8080` in browser.
+
+Features:
+- Real-time power flow display
+- Toggle switches (synced with Home Assistant)
+- Manual setpoint control
+- Power limits override
+- Loop interval control
+- Power history graph
+- Console output
+
+### One-shot Mode
+
+```bash
+# Set specific setpoint and exit
+python3 main.py 1500
+
+# Dry run (don't send commands)
+python3 main.py --dry-run
+```
+
+## Operating Modes
+
+### Normal Mode
+- Targets zero grid power
+- Automatically adjusts based on consumption and solar
+
+### Only Charging (`[OC]`)
+- During daytime low electricity rates
+- Don't discharge battery
+- Use MPPT solar only, minus offset
+
+### No Feed (`[NF]`)
+- Only use Tasmota PV inverters
+- Don't discharge main battery
+- Setpoint = Tasmota PV power
+
+### House Support (`[HS]`)
+- Tasmota PV minus 300W
+- Supports house loads partially
+
+### Charge Battery (`[CHG]`)
+- Force setpoint to 2200W
+- Maximum battery charging
+
+### Do Not Supply Charger (`[NoEV]`)
+- EV charges from grid only
+- Battery doesn't supply EV charger
+- Grid calculation excludes EV consumption
+
+### Minimize Charging (`[MC]`)
+- Automatically turns on/off dump loads
+- Uses excess solar instead of grid export
+
+## Console Output Format
+
+```
+HH:MM:SS[flags]>setpoint(prev) g:total(L1+L2)net  tt(L1+L2) tt:home [State]battW,soc%,b1%,b2% solar loads water car
+```
+
+Example:
+```
+14:23:45[OC:850-60]>-790(0) g:45(23+22)50  567(300+267) tt:580 [External control]-150W,85%,82%,83% 890(120+130+640) 45f 150l 42cm 78%
+```
+
+Flags:
+- `[~]` - Grid near zero, keeping stable
+- `[EV:XXX]` - EV power excluded from grid calculation
+- `[OC:XXX-60]` - Only charging mode (MPPT minus offset)
+- `[NF]` - No feed mode
+- `[HS]` - House support mode
+- `[NoEV]` - EV charger exclusion limit applied
+- `[CHG]` - Charge battery mode
+- `[MC+/-]` - Minimize charging load changes
+
+## Troubleshooting
+
+### Service not starting
+```bash
+cat /var/log/inverter-control/current | tai64nlocal | tail -50
+```
+
+### D-Bus errors
+```bash
+# Check VE.Bus service
+dbus -y | grep vebus
+
+# Check system data
+dbus -y com.victronenergy.system / GetValue
+```
+
+### Home Assistant connection
+```bash
+# Test from Venus OS
+curl -H "Authorization: Bearer YOUR_HA_TOKEN" \
+     http://YOUR_HA_IP:8123/api/states/sensor.your_sensor
+```
+
+### Screen not attaching
+```bash
+# List screen sessions
+screen -ls
+
+# Force create new session
+screen -dmS inverter
+```
+
+## Dependencies
+
+- Python 3.x (included in Venus OS)
+- requests (for HA API)
+- D-Bus (for Victron communication)
+- screen (for console access)
+
+## License
+
+MIT License
