@@ -13,6 +13,7 @@ import signal
 import logging
 import traceback
 import atexit
+import gc
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
@@ -71,7 +72,7 @@ except ImportError:
     SSL_KEY = None
 from victron import get_victron
 from homeassistant import get_ha
-from web.server import start_web_server, add_history_point, add_console_line
+from web.server import start_web_server, stop_web_server, add_history_point, add_console_line
 
 
 class InverterController:
@@ -744,6 +745,10 @@ def _main_inner():
     web_fail_threshold = 3
     last_web_check = time.time()
     
+    # Memory management: run gc periodically
+    gc_interval = 300  # Every 5 minutes
+    last_gc_time = time.time()
+    
     def check_web_server():
         """Check if web server is responding"""
         try:
@@ -764,8 +769,9 @@ def _main_inner():
                 break
             
             # Periodic web server health check
-            if not args.no_web and time.time() - last_web_check > web_check_interval:
-                last_web_check = time.time()
+            now = time.time()
+            if not args.no_web and now - last_web_check > web_check_interval:
+                last_web_check = now
                 if check_web_server():
                     web_fail_count = 0
                 else:
@@ -777,12 +783,18 @@ def _main_inner():
                         print(f"{C.RED}[HEALTH] Web server dead, exiting for restart...{C.RESET}")
                         break  # Exit, daemontools will restart us
             
+            # Periodic garbage collection (free memory on resource-constrained Venus OS)
+            if now - last_gc_time > gc_interval:
+                last_gc_time = now
+                gc.collect()
+            
             time.sleep(controller.loop_interval)
     except KeyboardInterrupt:
         logger.info("Shutdown requested (KeyboardInterrupt)")
         print("\nShutting down...")
     finally:
         logger.info("Inverter Control shutting down")
+        stop_web_server()
         controller.ha.stop()
 
 

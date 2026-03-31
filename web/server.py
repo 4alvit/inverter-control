@@ -903,6 +903,8 @@ updateData();
 </html>'''
 
 
+_server_instance = None
+
 def start_web_server(
     get_state: Callable[[], Dict[str, Any]],
     set_setpoint: Callable[[int], bool],
@@ -920,7 +922,7 @@ def start_web_server(
     
     If ssl_cert and ssl_key are provided, starts HTTPS server.
     """
-    global state_getter, setpoint_setter, dry_run_toggler, limits_setter, ess_mode_toggler, loop_interval_setter, ha_client
+    global state_getter, setpoint_setter, dry_run_toggler, limits_setter, ess_mode_toggler, loop_interval_setter, ha_client, _server_instance
     state_getter = get_state
     setpoint_setter = set_setpoint
     dry_run_toggler = toggle_dry_run
@@ -930,6 +932,8 @@ def start_web_server(
     ha_client = ha
     
     server = HTTPServer((host, port), DashboardHandler)
+    server.timeout = 1  # Allow periodic checks for shutdown
+    _server_instance = server
     
     # Wrap with SSL if certificate provided
     if ssl_cert and ssl_key and os.path.exists(ssl_cert) and os.path.exists(ssl_key):
@@ -949,3 +953,14 @@ def start_web_server(
     thread = threading.Thread(target=server_thread, daemon=True)
     thread.start()
     return server
+
+
+def stop_web_server():
+    """Gracefully stop the web server"""
+    global _server_instance
+    if _server_instance:
+        try:
+            _server_instance.shutdown()
+        except Exception:
+            pass
+        _server_instance = None

@@ -25,11 +25,25 @@ class HomeAssistantClient:
     Uses last known values when HA is unreachable.
     """
     
+    # Circuit breaker settings
+    CIRCUIT_OPEN_THRESHOLD = 5      # Open circuit after N consecutive failures
+    CIRCUIT_RESET_TIMEOUT = 60      # Try again after N seconds
+    
     def __init__(self):
-        self._headers = {
+        # Use session for connection pooling (reuses TCP connections)
+        self._session = requests.Session()
+        self._session.headers.update({
             "Authorization": f"Bearer {HA_TOKEN}",
             "Content-Type": "application/json"
-        }
+        })
+        # Configure connection pool
+        adapter = requests.adapters.HTTPAdapter(
+            pool_connections=2,
+            pool_maxsize=5,
+            max_retries=0  # We handle retries ourselves
+        )
+        self._session.mount('http://', adapter)
+        self._session.mount('https://', adapter)
         
         # Cached values (persist until HA reconnects)
         self._sensors: Dict[str, Any] = {k: 0 for k in HA_SENSORS}
@@ -44,6 +58,11 @@ class HomeAssistantClient:
         self._last_update = 0
         self._last_error = ""
         self._last_error_log = 0  # Throttle error logging
+        
+        # Circuit breaker state
+        self._consecutive_failures = 0
+        self._circuit_open = False
+        self._circuit_open_time = 0
         
         # Thread control
         self._running = False
@@ -68,22 +87,26 @@ class HomeAssistantClient:
         return 0
     
     def stop(self):
-        """Stop background polling"""
+        """Stop background polling and cleanup"""
         self._running = False
         if self._thread:
             self._thread.join(timeout=2)
+        # Close session to release connections
+        try:
+            self._session.close()
+        except Exception:
+            pass
     
     def _get_state(self, entity_id: str) -> Optional[str]:
         """Get entity state from HA"""
         try:
-            response = requests.get(
+            response = self._session.get(
                 f"{HA_URL}/api/states/{entity_id}",
-                headers=self._headers,
-                timeout=HA_TIMEOUT
+                timeout=(3, HA_TIMEOUT)  # (connect_timeout, read_timeout)
             )
             if response.status_code == 200:
                 return response.json().get('state')
-        except:
+        except (requests.exceptions.RequestException, ValueError):
             pass
         return None
     
@@ -100,20 +123,40 @@ class HomeAssistantClient:
             return default
     
     def _poll_loop(self):
-        """Background polling loop"""
+        """Background polling loop with circuit breaker"""
         while self._running:
+            now = time.time()
+            
+            # Circuit breaker: skip polling if circuit is open
+            if self._circuit_open:
+                if now - self._circuit_open_time > self.CIRCUIT_RESET_TIMEOUT:
+                    # Try to reset circuit
+                    self._circuit_open = False
+                    logger.info("HA circuit breaker: attempting reset")
+                else:
+                    time.sleep(HA_POLL_INTERVAL)
+                    continue
+            
             try:
                 self._poll_all()
                 self._connected = True
-                self._last_update = time.time()
+                self._last_update = now
                 self._last_error = ""
+                self._consecutive_failures = 0
             except Exception as e:
                 self._connected = False
                 self._last_error = str(e)
+                self._consecutive_failures += 1
+                
+                # Open circuit breaker after threshold
+                if self._consecutive_failures >= self.CIRCUIT_OPEN_THRESHOLD:
+                    self._circuit_open = True
+                    self._circuit_open_time = now
+                    logger.warning(f"HA circuit breaker OPEN after {self._consecutive_failures} failures")
+                
                 # Throttle error logging to once per minute
-                now = time.time()
                 if now - self._last_error_log > 60:
-                    logger.warning(f"HA poll failed: {e}")
+                    logger.warning(f"HA poll failed ({self._consecutive_failures}x): {e}")
                     self._last_error_log = now
             
             time.sleep(HA_POLL_INTERVAL)
@@ -123,13 +166,11 @@ class HomeAssistantClient:
         # Use template API for batch fetch (much faster)
         template = self._build_template()
         
-        try:
-            response = requests.post(
-                f"{HA_URL}/api/template",
-                headers=self._headers,
-                json={"template": template},
-                timeout=HA_TIMEOUT
-            )
+        response = self._session.post(
+            f"{HA_URL}/api/template",
+            json={"template": template},
+            timeout=(3, HA_TIMEOUT)  # (connect_timeout, read_timeout)
+        )
             
             if response.status_code != 200:
                 raise Exception(f"HA API error: {response.status_code}")
