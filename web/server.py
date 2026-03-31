@@ -589,7 +589,19 @@ function initChart() {
 }
 
 async function toggle(entity) {
-    await fetch('/api/toggle', { method: 'POST', body: JSON.stringify({entity}) });
+    try {
+        const res = await fetch('/api/toggle', { 
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({entity}) 
+        });
+        const data = await res.json();
+        if (!data.success) {
+            console.error('Toggle failed for', entity);
+        }
+    } catch (e) {
+        console.error('Toggle error:', e);
+    }
 }
 
 async function toggleDryRun() {
