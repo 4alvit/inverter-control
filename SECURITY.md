@@ -4,25 +4,38 @@
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.x.x   | :white_check_mark: |
+| 1.3.x   | :white_check_mark: |
+| < 1.3   | :x:                |
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it by opening a GitHub issue or contacting the maintainer directly.
+If you discover a security vulnerability, please:
 
-**Please include:**
-- Description of the vulnerability
-- Steps to reproduce
-- Potential impact
-- Suggested fix (if any)
-
-We will respond as quickly as possible and work to address the issue.
+1. **Do NOT** open a public issue
+2. Email the maintainers directly or use GitHub's private vulnerability reporting
+3. Include:
+   - Description of the vulnerability
+   - Steps to reproduce
+   - Potential impact
+   - Suggested fix (if any)
 
 ## Security Considerations
 
-This software runs on Victron Venus OS and controls power equipment. Please ensure:
+This project runs on Venus OS with access to:
 
-- Keep your Venus OS updated
-- Use HTTPS for web interface access
-- Store `secrets.py` securely and never commit real credentials
-- Restrict network access to trusted devices only
+- D-Bus (Victron system control)
+- Home Assistant API (if configured)
+- Local network (web interface)
+
+### Recommendations
+
+1. **secrets.py**: Never commit this file. It contains API tokens and sensitive configuration.
+2. **Network**: Run on a trusted local network. The web interface has no authentication.
+3. **SSL**: Use HTTPS in production (see `setup_ssl.sh`).
+4. **Firewall**: Consider restricting access to ports 8080 (web) and 9999 (console).
+
+## Known Limitations
+
+- Web interface has no authentication
+- TCP console stream has no encryption
+- Designed for trusted home networks only
