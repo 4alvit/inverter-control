@@ -266,6 +266,11 @@ def get_dashboard_html() -> str:
             background: #1a1a1a; 
             color: #555;
         }
+        .toggle-btn.pending {
+            background: #000;
+            color: #333;
+            border-color: #333;
+        }
         .toggle-btn.dry-on {
             background: #ff9800;
             border-color: #ffc107;
@@ -520,22 +525,14 @@ def get_dashboard_html() -> str:
                         </div>
                     </div>
                 </div>
-                <div class="card" id="laundry-section" style="display:none;">
-                    <div class="card-header"><i class="fas fa-plug me-2"></i>Laundry</div>
-                    <div class="card-body py-1">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span class="small text-vue">Laundry island</span>
-                            <div id="laundry-outlet" class="toggle-btn off" onclick="toggle('switch.laundry_zigbee_switch')">OUTLET</div>
-                        </div>
-                    </div>
-                </div>
                 <div class="card" id="home-section">
                     <div class="card-header"><i class="fas fa-home me-2"></i>Home</div>
                     <div class="card-body py-1">
                         <div class="d-flex justify-content-between align-items-center">
-                            <div class="d-flex gap-1">
-                                <div id="home-recliner" class="toggle-btn off" onclick="toggle('switch.recliner_recliner')">RECLINER</div>
-                                <div id="home-garage" class="toggle-btn off" onclick="toggle('switch.garage_opener_l')">GARAGE</div>
+                            <div class="d-flex gap-1 flex-wrap">
+                                <div id="home-recliner" class="toggle-btn off" onclick="togglePending(this, 'switch.recliner_recliner')">RECLINER</div>
+                                <div id="home-garage" class="toggle-btn off" onclick="togglePending(this, 'switch.garage_opener_l')">GARAGE</div>
+                                <div id="home-laundry" class="toggle-btn off" onclick="togglePending(this, 'switch.laundry_zigbee_switch')">LAUNDRY</div>
                             </div>
                         </div>
                     </div>
@@ -687,6 +684,13 @@ async function toggle(entity) {
     } catch (e) {
         console.error('Toggle error:', e);
     }
+}
+
+function togglePending(btn, entity) {
+    // Set pending state (black) until next HA update
+    btn.classList.remove('on', 'off');
+    btn.classList.add('pending');
+    toggle(entity);
 }
 
 async function press(entity) {
@@ -943,21 +947,22 @@ async function updateData() {
             document.getElementById('dryer-section').style.display = 'none';
         }
         
-        // Laundry outlet - show when washer and dryer are not running
-        const laundryEnabled = features.washer !== false || features.dryer !== false;
-        const laundryActive = washerTime > 0 || dryerTime > 0;
-        if (laundryEnabled && !laundryActive) {
-            document.getElementById('laundry-section').style.display = '';
-            document.getElementById('laundry-outlet').className = 'toggle-btn ' + (state.laundry_outlet ? 'on' : 'off');
-        } else {
-            document.getElementById('laundry-section').style.display = 'none';
-        }
-        
         // Home section - always visible if HA connected
         if (features.ha !== false) {
             document.getElementById('home-section').style.display = '';
-            document.getElementById('home-recliner').className = 'toggle-btn ' + (state.home_recliner ? 'on' : 'off');
-            document.getElementById('home-garage').className = 'toggle-btn ' + (state.home_garage ? 'on' : 'off');
+            // Only update if not pending (waiting for HA response)
+            const recliner = document.getElementById('home-recliner');
+            const garage = document.getElementById('home-garage');
+            const laundry = document.getElementById('home-laundry');
+            if (!recliner.classList.contains('pending')) {
+                recliner.className = 'toggle-btn ' + (state.home_recliner ? 'on' : 'off');
+            }
+            if (!garage.classList.contains('pending')) {
+                garage.className = 'toggle-btn ' + (state.home_garage ? 'on' : 'off');
+            }
+            if (!laundry.classList.contains('pending')) {
+                laundry.className = 'toggle-btn ' + (state.laundry_outlet ? 'on' : 'off');
+            }
         } else {
             document.getElementById('home-section').style.display = 'none';
         }
