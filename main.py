@@ -73,7 +73,7 @@ except ImportError:
     SSL_KEY = None
 from victron import get_victron
 from homeassistant import get_ha
-from web.server import start_web_server, stop_web_server, add_history_point, add_console_line
+from web.server import start_web_server, stop_web_server, add_history_point, add_console_line, start_tcp_console, stop_tcp_console
 
 
 class InverterController:
@@ -774,6 +774,8 @@ def _main_inner():
         )
         proto = "https" if SSL_ENABLED else "http"
         print(f"Web server started on {proto}://{WEB_HOST}:{args.port}")
+        # Start TCP console streaming
+        start_tcp_console()
     
     # If manual setpoint provided, run once and exit
     if args.setpoint is not None:
@@ -840,6 +842,7 @@ def _main_inner():
         print("\nShutting down...")
     finally:
         logger.info("Inverter Control shutting down")
+        stop_tcp_console()
         stop_web_server()
         controller.ha.stop()
 

@@ -17,6 +17,91 @@ import os
 
 logger = logging.getLogger('inverter-control')
 
+# TCP console streaming
+import socket
+import select
+
+TCP_CONSOLE_PORT = 9999
+_tcp_clients = []
+_tcp_clients_lock = threading.Lock()
+_tcp_server_socket = None
+_tcp_server_thread = None
+_tcp_running = False
+
+
+def _tcp_accept_loop():
+    """Accept TCP connections for console streaming"""
+    global _tcp_running
+    while _tcp_running and _tcp_server_socket:
+        try:
+            readable, _, _ = select.select([_tcp_server_socket], [], [], 1.0)
+            if readable:
+                client, addr = _tcp_server_socket.accept()
+                client.setblocking(False)
+                with _tcp_clients_lock:
+                    _tcp_clients.append(client)
+                logger.info(f"TCP console client connected: {addr}")
+        except Exception:
+            if _tcp_running:
+                pass  # Socket closed during shutdown
+
+
+def _broadcast_to_tcp(line: str):
+    """Send line to all connected TCP clients"""
+    if not _tcp_clients:
+        return
+    data = (line + '\n').encode('utf-8', errors='replace')
+    with _tcp_clients_lock:
+        dead = []
+        for client in _tcp_clients:
+            try:
+                client.sendall(data)
+            except Exception:
+                dead.append(client)
+        for client in dead:
+            try:
+                client.close()
+            except Exception:
+                pass
+            _tcp_clients.remove(client)
+
+
+def start_tcp_console(port: int = TCP_CONSOLE_PORT):
+    """Start TCP console streaming server"""
+    global _tcp_server_socket, _tcp_server_thread, _tcp_running
+    try:
+        _tcp_server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        _tcp_server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        _tcp_server_socket.bind(('0.0.0.0', port))
+        _tcp_server_socket.listen(5)
+        _tcp_server_socket.setblocking(False)
+        _tcp_running = True
+        _tcp_server_thread = threading.Thread(target=_tcp_accept_loop, daemon=True)
+        _tcp_server_thread.start()
+        print(f"  Console stream: nc <ip> {port}")
+    except Exception as e:
+        logger.warning(f"Failed to start TCP console: {e}")
+
+
+def stop_tcp_console():
+    """Stop TCP console streaming server"""
+    global _tcp_server_socket, _tcp_running
+    _tcp_running = False
+    if _tcp_server_socket:
+        try:
+            _tcp_server_socket.close()
+        except Exception:
+            pass
+        _tcp_server_socket = None
+    with _tcp_clients_lock:
+        for client in _tcp_clients:
+            try:
+                client.close()
+            except Exception:
+                pass
+        _tcp_clients.clear()
+
+
 # Will be set by main.py
 state_getter: Callable[[], Dict[str, Any]] = lambda: {}
 setpoint_setter: Callable[[int], bool] = lambda x: False
@@ -50,8 +135,9 @@ def add_history_point(data: Dict[str, Any]):
 
 
 def add_console_line(line: str):
-    """Add line to console log"""
+    """Add line to console log and broadcast to TCP clients"""
     console_log.append(line)
+    _broadcast_to_tcp(line)
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
