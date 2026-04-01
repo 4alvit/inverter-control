@@ -57,6 +57,8 @@ class HomeAssistantClient:
         self._washer_power: bool = False
         self._dryer_power: bool = False
         self._laundry_outlet: bool = False
+        self._home_recliner: bool = False
+        self._home_garage: bool = False
         
         # Connection status
         self._connected = False
@@ -253,6 +255,10 @@ class HomeAssistantClient:
                 self._dryer_power = data['dryer_power'] == 'on'
             if 'laundry_outlet' in data:
                 self._laundry_outlet = data['laundry_outlet'] == 'on'
+            if 'home_recliner' in data:
+                self._home_recliner = data['home_recliner'] == 'on'
+            if 'home_garage' in data:
+                self._home_garage = data['home_garage'] == 'on'
     
     def _build_template(self) -> str:
         """Build Jinja2 template for batch fetch"""
@@ -305,6 +311,10 @@ class HomeAssistantClient:
         # Laundry outlet (shown when washer/dryer not running)
         if (ENABLE_WASHER or ENABLE_DRYER) and HA_LAUNDRY_OUTLET:
             items.append(f'  "laundry_outlet": "{{{{ states("{HA_LAUNDRY_OUTLET}") }}}}"')
+        
+        # Home switches (always poll if HA enabled)
+        items.append('  "home_recliner": "{{ states(\'switch.recliner_recliner\') }}"')
+        items.append('  "home_garage": "{{ states(\'switch.garage_opener_l\') }}"')
         
         parts.append(',\n'.join(items))
         parts.append('}')
@@ -379,6 +389,16 @@ class HomeAssistantClient:
     def laundry_outlet_on(self) -> bool:
         with self._lock:
             return self._laundry_outlet
+    
+    @property
+    def home_recliner_on(self) -> bool:
+        with self._lock:
+            return self._home_recliner
+    
+    @property
+    def home_garage_on(self) -> bool:
+        with self._lock:
+            return self._home_garage
     
     def get_all_sensors(self) -> Dict[str, Any]:
         """Get copy of all sensor values"""

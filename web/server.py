@@ -529,6 +529,17 @@ def get_dashboard_html() -> str:
                         </div>
                     </div>
                 </div>
+                <div class="card" id="home-section">
+                    <div class="card-header"><i class="fas fa-home me-2"></i>Home</div>
+                    <div class="card-body py-1">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex gap-1">
+                                <div id="home-recliner" class="toggle-btn off" onclick="toggle('switch.recliner_recliner')">RECLINER</div>
+                                <div id="home-garage" class="toggle-btn off" onclick="toggle('switch.garage_opener_l')">GARAGE</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
         
@@ -940,6 +951,15 @@ async function updateData() {
             document.getElementById('laundry-outlet').className = 'toggle-btn ' + (state.laundry_outlet ? 'on' : 'off');
         } else {
             document.getElementById('laundry-section').style.display = 'none';
+        }
+        
+        // Home section - always visible if HA connected
+        if (features.ha !== false) {
+            document.getElementById('home-section').style.display = '';
+            document.getElementById('home-recliner').className = 'toggle-btn ' + (state.home_recliner ? 'on' : 'off');
+            document.getElementById('home-garage').className = 'toggle-btn ' + (state.home_garage ? 'on' : 'off');
+        } else {
+            document.getElementById('home-section').style.display = 'none';
         }
         
         // Toggles with friendly names
