@@ -99,29 +99,6 @@ exec $INSTALL_DIR/healthcheck.sh
 EOF
 chmod +x /service/inverter-healthcheck/run
 
-# Create helper script to view live output
-cat > "$INSTALL_DIR/live.sh" << 'EOF'
-#!/bin/sh
-# View live output from inverter-control
-# Press Ctrl+C to exit (service keeps running)
-
-echo "=== Inverter Control Live Output ==="
-echo "Press Ctrl+C to exit (service continues running)"
-echo ""
-
-# Stop service, run manually with output visible
-svc -d /service/inverter-control
-sleep 1
-cd /data/inverter_control
-python3 -u main.py
-
-# When user presses Ctrl+C, restart service
-echo ""
-echo "Restarting service..."
-svc -u /service/inverter-control
-EOF
-chmod +x "$INSTALL_DIR/live.sh"
-
 echo ""
 echo "=============================================="
 echo "  Installation Complete!"

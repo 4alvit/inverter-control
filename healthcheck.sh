@@ -19,7 +19,7 @@ log() {
 
 while true; do
     # Check if web server responds
-    if wget -q -O /dev/null --timeout=5 "$CHECK_URL" 2>/dev/null; then
+    if wget --no-check-certificate -q -O /dev/null --timeout=5 "$CHECK_URL" 2>/dev/null; then
         if [ $fail_count -gt 0 ]; then
             log "OK: Web server recovered after $fail_count failures"
         fi
