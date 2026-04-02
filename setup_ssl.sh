@@ -6,7 +6,7 @@
 
 set -e
 
-CERBO_IP="192.168.160.150"
+CERBO_IP="${1:-Cerbo}"
 CERT_DIR="$HOME/.inverter-control-ssl"
 CERT_NAME="inverter-control"
 DAYS_VALID=3650  # 10 years
