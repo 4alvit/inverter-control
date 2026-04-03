@@ -28,7 +28,7 @@ echo ""
 
 # Check local syntax before copying
 echo ">>> Checking Python syntax..."
-python3 -m py_compile "$SCRIPT_DIR/main.py" "$SCRIPT_DIR/config.py" "$SCRIPT_DIR/victron.py" "$SCRIPT_DIR/homeassistant.py" "$SCRIPT_DIR/web/server.py" "$SCRIPT_DIR/web/app.py"
+python3 -m py_compile "$SCRIPT_DIR/main.py" "$SCRIPT_DIR/config.py" "$SCRIPT_DIR/victron.py" "$SCRIPT_DIR/homeassistant.py" "$SCRIPT_DIR/web/server.py" "$SCRIPT_DIR/web/app.py" "$SCRIPT_DIR/mqtt_bridge.py"
 echo "    Syntax OK"
 
 # Create directories on remote
@@ -37,7 +37,7 @@ ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR/web"
 # Copy all files in parallel using tar (faster than multiple scp)
 echo ">>> Copying files..."
 tar -cf - -C "$SCRIPT_DIR" \
-    config.py main.py victron.py homeassistant.py install.sh healthcheck.sh keepalive.py requirements.txt \
+    config.py main.py victron.py homeassistant.py install.sh healthcheck.sh keepalive.py requirements.txt mqtt_bridge.py \
     web/__init__.py web/server.py web/app.py \
     $([ -f "$SCRIPT_DIR/secrets.py" ] && echo "secrets.py") \
     2>/dev/null | ssh "$SSH_HOST" "tar -xf - -C $REMOTE_DIR"

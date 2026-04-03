@@ -78,6 +78,13 @@ try:
 except ImportError:
     from web.server import start_web_server, stop_web_server, add_history_point, add_console_line, broadcast_console_tcp, start_tcp_console, stop_tcp_console
 
+# MQTT bridge for remote dashboard (optional)
+try:
+    from mqtt_bridge import get_mqtt_bridge, MQTT_AVAILABLE
+except ImportError:
+    MQTT_AVAILABLE = False
+    get_mqtt_bridge = lambda *a, **kw: None
+
 
 class InverterController:
     """
@@ -781,6 +788,23 @@ def _main_inner():
         # Start TCP console streaming
         start_tcp_console()
     
+    # Start MQTT bridge for remote dashboard (optional)
+    mqtt_bridge = None
+    from config import MQTT_BROKER, MQTT_PORT, MQTT_TOPIC_PREFIX
+    if MQTT_AVAILABLE and MQTT_BROKER:
+        mqtt_bridge = get_mqtt_bridge(broker=MQTT_BROKER, port=MQTT_PORT, prefix=MQTT_TOPIC_PREFIX)
+        if mqtt_bridge:
+            mqtt_bridge.connect()
+            # Register command callbacks
+            mqtt_bridge.register_callback('toggle', lambda p: controller.ha.toggle_entity(p.get('entity', '')))
+            mqtt_bridge.register_callback('press', lambda p: controller.ha.press_button(p.get('entity', '')))
+            mqtt_bridge.register_callback('setpoint', lambda p: controller.set_manual_setpoint(int(p.get('value', 0))))
+            mqtt_bridge.register_callback('dry_run', lambda p: controller.toggle_dry_run())
+            mqtt_bridge.register_callback('limits', lambda p: controller.set_power_limits(p.get('min', -2300), p.get('max', 2250)))
+            mqtt_bridge.register_callback('ess_mode', lambda p: controller.toggle_ess_mode())
+            mqtt_bridge.register_callback('loop_interval', lambda p: controller.set_loop_interval(float(p.get('interval', 0.33))))
+            print(f"  MQTT bridge: {MQTT_BROKER}:{MQTT_PORT} (topic: {MQTT_TOPIC_PREFIX}/)")
+    
     # If manual setpoint provided, run once and exit
     if args.setpoint is not None:
         controller.manual_setpoint = args.setpoint
@@ -820,6 +844,10 @@ def _main_inner():
                 logger.info("run_cycle returned False - exiting main loop")
                 break
             
+            # Publish state to MQTT for remote dashboard
+            if mqtt_bridge and mqtt_bridge.connected:
+                mqtt_bridge.publish_state(controller.get_state())
+            
             # Periodic web server health check
             now = time.time()
             if not args.no_web and now - last_web_check > web_check_interval:
@@ -846,6 +874,8 @@ def _main_inner():
         print("\nShutting down...")
     finally:
         logger.info("Inverter Control shutting down")
+        if mqtt_bridge:
+            mqtt_bridge.disconnect()
         stop_tcp_console()
         stop_web_server()
         controller.ha.stop()

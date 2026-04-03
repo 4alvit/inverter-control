@@ -76,6 +76,15 @@ if HA_TOKEN in ("", "your_token_here", None):
     print("INFO: Home Assistant disabled (no valid HA_TOKEN in secrets.py)")
 
 # =============================================================================
+# MQTT BRIDGE (for remote web dashboard)
+# =============================================================================
+# MQTT broker address (for remote dashboard connection)
+# Set to empty string to disable MQTT bridge
+MQTT_BROKER = ""  # e.g. "192.168.160.15" or "localhost"
+MQTT_PORT = 1883
+MQTT_TOPIC_PREFIX = "inverter"
+
+# =============================================================================
 # RUNTIME MODE
 # =============================================================================
 
