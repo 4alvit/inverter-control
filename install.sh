@@ -31,6 +31,7 @@ if [ "$SCRIPT_DIR" != "$INSTALL_DIR" ]; then
     cp "$SCRIPT_DIR/homeassistant.py" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$SCRIPT_DIR/web/__init__.py" "$INSTALL_DIR/web/" 2>/dev/null || true
     cp "$SCRIPT_DIR/web/server.py" "$INSTALL_DIR/web/" 2>/dev/null || true
+    cp "$SCRIPT_DIR/web/app.py" "$INSTALL_DIR/web/" 2>/dev/null || true
 fi
 
 chmod +x "$INSTALL_DIR/main.py"
@@ -38,7 +39,11 @@ chmod +x "$INSTALL_DIR/healthcheck.sh" 2>/dev/null || true
 
 # Install required Python packages
 echo ">>> Installing Python dependencies..."
-pip3 install requests 2>/dev/null || opkg install python3-requests 2>/dev/null || true
+pip3 install requests fastapi uvicorn msgpack 2>/dev/null || {
+    opkg update 2>/dev/null || true
+    opkg install python3-requests 2>/dev/null || true
+    pip3 install fastapi uvicorn msgpack 2>/dev/null || true
+}
 
 # Create wrapper script for screen
 echo ">>> Creating screen wrapper..."
@@ -89,15 +94,15 @@ rm -rf /service/$SERVICE_NAME/log 2>/dev/null || true
 
 # Create healthcheck service (watchdog)
 echo ">>> Setting up healthcheck watchdog..."
-mkdir -p /service/inverter-healthcheck
+#mkdir -p /service/inverter-healthcheck
 
-cat > /service/inverter-healthcheck/run << EOF
-#!/bin/sh
-exec 2>&1
-sleep 60  # Wait for main service to start
-exec $INSTALL_DIR/healthcheck.sh
-EOF
-chmod +x /service/inverter-healthcheck/run
+#cat > /service/inverter-healthcheck/run << EOF
+##!/bin/sh
+#exec 2>&1
+#sleep 60  # Wait for main service to start
+#exec $INSTALL_DIR/healthcheck.sh
+#EOF
+#chmod +x /service/inverter-healthcheck/run
 
 echo ""
 echo "=============================================="

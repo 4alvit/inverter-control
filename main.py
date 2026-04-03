@@ -73,7 +73,10 @@ except ImportError:
     SSL_KEY = None
 from victron import get_victron
 from homeassistant import get_ha
-from web.server import start_web_server, stop_web_server, add_history_point, add_console_line, broadcast_console_tcp, start_tcp_console, stop_tcp_console
+try:
+    from web.app import start_web_server, stop_web_server, add_history_point, add_console_line, broadcast_console_tcp, start_tcp_console, stop_tcp_console
+except ImportError:
+    from web.server import start_web_server, stop_web_server, add_history_point, add_console_line, broadcast_console_tcp, start_tcp_console, stop_tcp_console
 
 
 class InverterController:
