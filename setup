@@ -47,6 +47,18 @@ if [ "$scriptAction" == 'INSTALL' ]; then
         cp "$scriptDir/secrets.example.py" "$installDir/secrets.py"
         logMessage "WARNING: Using secrets.example.py - configure /data/setupOptions/$packageName/secrets.py"
     fi
+    
+    # Install ui_config from setupOptions or use sample
+    if [ -f "/data/setupOptions/$packageName/ui_config.yaml" ]; then
+        cp "/data/setupOptions/$packageName/ui_config.yaml" "$installDir/"
+        logMessage "Using ui_config.yaml from setupOptions"
+    elif [ -f "$scriptDir/ui_config.yaml" ]; then
+        cp "$scriptDir/ui_config.yaml" "$installDir/"
+        logMessage "Using ui_config.yaml from package"
+    else
+        cp "$scriptDir/ui_config.yaml.sample" "$installDir/ui_config.yaml"
+        logMessage "WARNING: Using ui_config.yaml.sample - configure /data/setupOptions/$packageName/ui_config.yaml"
+    fi
 fi
 
 #### uninstall
