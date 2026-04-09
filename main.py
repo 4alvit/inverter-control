@@ -86,11 +86,21 @@ except ImportError:
     get_mqtt_bridge = lambda *a, **kw: None
 
 
+# =============================================================================
+# INVERTER CONTROLLER
+# =============================================================================
+
 class InverterController:
     """
     Main controller for grid-zero feed-in management.
     Implements split-phase compensation and various operating modes.
+    
+    See ARCHITECTURE.md for code structure overview.
     """
+    
+    # -------------------------------------------------------------------------
+    # INITIALIZATION
+    # -------------------------------------------------------------------------
     
     def __init__(self, dry_run: Optional[bool] = None):
         # Use config default if not specified via CLI
@@ -183,6 +193,10 @@ class InverterController:
         """Set manual setpoint override"""
         self.manual_setpoint = max(self.power_limit_min, min(self.power_limit_max, value))
         return True
+    
+    # -------------------------------------------------------------------------
+    # SETPOINT CALCULATION (Core Algorithm)
+    # -------------------------------------------------------------------------
     
     def calculate_setpoint(self, sys_data: Dict[str, Any]) -> tuple[int, str]:
         """
@@ -444,6 +458,10 @@ class InverterController:
             # Non-critical - log and continue
             logger.warning(f"minimize_charging error: {e}")
     
+    # -------------------------------------------------------------------------
+    # CONSOLE OUTPUT FORMATTING
+    # -------------------------------------------------------------------------
+    
     def format_console_output(self, sys_data: Dict[str, Any], setpoint: int, flags: str) -> str:
         """Format console output matching bash script style"""
         now = datetime.now(ZoneInfo(TIMEZONE)).strftime("%H:%M:%S")
@@ -578,6 +596,10 @@ class InverterController:
         title = f"{produced}kW(${dollars})[G:{grid_kwh}kW] B.I:{bin_kwh}kWh,O:{bout_kwh}kWh"
         print(f"\033]2;{title}\007", end='', flush=True)
     
+    # -------------------------------------------------------------------------
+    # STATE MANAGEMENT (for MQTT/Dashboard)
+    # -------------------------------------------------------------------------
+    
     def update_state(self, sys_data: Dict[str, Any], setpoint: int, full_update: bool = False):
         """Update internal state for web interface
         
@@ -685,6 +707,10 @@ class InverterController:
             'ui_config': self.ui_config,
         }
     
+    # -------------------------------------------------------------------------
+    # CONTROL LOOP
+    # -------------------------------------------------------------------------
+    
     def run_cycle(self) -> bool:
         """Run one control cycle. Returns False to exit."""
         # Watchdog: kill cycle if it takes more than 5 seconds
@@ -761,6 +787,10 @@ class InverterController:
             signal.alarm(0)  # Disable watchdog
             signal.signal(signal.SIGALRM, old_handler)
 
+
+# =============================================================================
+# ENTRY POINT
+# =============================================================================
 
 def main():
     logger.info("=== Inverter Control starting ===")
