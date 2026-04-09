@@ -9,8 +9,7 @@ inverter_control/
 ├── victron.py           # D-Bus communication with Victron Venus OS
 ├── homeassistant.py     # Home Assistant REST API integration
 ├── mqtt_bridge.py       # MQTT bridge for remote dashboard
-├── ui_config.py         # UI configuration loader
-├── ui_config_local.py   # Local UI configuration (gitignored)
+├── ui_config.py         # UI configuration for dashboard
 ├── keepalive.py         # Keepalive/watchdog functionality
 ├── secrets.py           # API keys and sensitive data (gitignored)
 └── version              # Version file for SetupHelper

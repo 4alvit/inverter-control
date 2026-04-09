@@ -44,19 +44,8 @@ if [ "$scriptAction" == 'INSTALL' ]; then
         logMessage "WARNING: Using secrets.example.py - configure /data/setupOptions/$packageName/secrets.py"
     fi
     
-    # Install ui_config module (always needed)
+    # Install ui_config module
     cp "$scriptDir/ui_config.py" "$installDir/"
-    
-    # Install ui_config_local from setupOptions if available
-    if [ -f "/data/setupOptions/$packageName/ui_config_local.py" ]; then
-        cp "/data/setupOptions/$packageName/ui_config_local.py" "$installDir/"
-        logMessage "Using ui_config_local.py from setupOptions"
-    elif [ -f "$scriptDir/ui_config_local.py" ]; then
-        cp "$scriptDir/ui_config_local.py" "$installDir/"
-        logMessage "Using ui_config_local.py from package"
-    else
-        logMessage "Using default UI config (customize via /data/setupOptions/$packageName/ui_config_local.py)"
-    fi
 fi
 
 #### uninstall
