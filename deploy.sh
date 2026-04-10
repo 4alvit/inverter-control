@@ -31,7 +31,8 @@ python3 -m py_compile \
     "$SCRIPT_DIR/homeassistant.py" \
     "$SCRIPT_DIR/mqtt_bridge.py" \
     "$SCRIPT_DIR/ui_config.py" \
-    "$SCRIPT_DIR/keepalive.py"
+    "$SCRIPT_DIR/keepalive.py" \
+    "$SCRIPT_DIR/console_server.py"
 echo "    Syntax OK"
 
 # Create directories on remote
@@ -47,6 +48,7 @@ scp -q "$SCRIPT_DIR/main.py" \
        "$SCRIPT_DIR/mqtt_bridge.py" \
        "$SCRIPT_DIR/ui_config.py" \
        "$SCRIPT_DIR/keepalive.py" \
+       "$SCRIPT_DIR/console_server.py" \
        "$SSH_HOST:$INSTALL_DIR/"
 
 # Copy secrets.py if exists
