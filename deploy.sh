@@ -6,72 +6,71 @@
 #   - SSH config with host 'Cerbo' pointing to Venus OS device
 #   - SSH key authentication configured
 #
-# Usage: ./deploy.sh [SSH_HOST] [--full]
-#   --full: Run full install (create services). Default is quick update.
+# Usage: ./deploy.sh [SSH_HOST]
 #
 
 set -e
 
 SSH_HOST="${1:-Cerbo}"
-FULL_INSTALL=false
-[[ "$2" == "--full" ]] && FULL_INSTALL=true
-
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-REMOTE_DIR="/data/inverter_control"
+INSTALL_DIR="/data/inverter-control"
+SETUP_OPTIONS_DIR="/data/setupOptions/inverter-control"
 
 echo "=============================================="
 echo "  Deploying Inverter Control to Venus OS"
 echo "=============================================="
 echo "SSH Host: $SSH_HOST"
-echo "Mode: $([ "$FULL_INSTALL" = true ] && echo "Full install" || echo "Quick update")"
 echo ""
 
 # Check local syntax before copying
 echo ">>> Checking Python syntax..."
-python3 -m py_compile "$SCRIPT_DIR/main.py" "$SCRIPT_DIR/config.py" "$SCRIPT_DIR/victron.py" "$SCRIPT_DIR/homeassistant.py" "$SCRIPT_DIR/web/server.py" "$SCRIPT_DIR/web/app.py" "$SCRIPT_DIR/mqtt_bridge.py"
+python3 -m py_compile \
+    "$SCRIPT_DIR/main.py" \
+    "$SCRIPT_DIR/config.py" \
+    "$SCRIPT_DIR/victron.py" \
+    "$SCRIPT_DIR/homeassistant.py" \
+    "$SCRIPT_DIR/mqtt_bridge.py" \
+    "$SCRIPT_DIR/ui_config.py" \
+    "$SCRIPT_DIR/keepalive.py"
 echo "    Syntax OK"
 
 # Create directories on remote
-ssh "$SSH_HOST" "mkdir -p $REMOTE_DIR/web"
+echo ">>> Creating directories..."
+ssh "$SSH_HOST" "mkdir -p $INSTALL_DIR $SETUP_OPTIONS_DIR"
 
-# Copy all files in parallel using tar (faster than multiple scp)
+# Copy Python files
 echo ">>> Copying files..."
-tar -cf - -C "$SCRIPT_DIR" \
-    config.py main.py victron.py homeassistant.py install.sh healthcheck.sh keepalive.py requirements.txt mqtt_bridge.py \
-    web/__init__.py web/server.py web/app.py \
-    $([ -f "$SCRIPT_DIR/secrets.py" ] && echo "secrets.py") \
-    2>/dev/null | ssh "$SSH_HOST" "tar -xf - -C $REMOTE_DIR"
+scp -q "$SCRIPT_DIR/main.py" \
+       "$SCRIPT_DIR/config.py" \
+       "$SCRIPT_DIR/victron.py" \
+       "$SCRIPT_DIR/homeassistant.py" \
+       "$SCRIPT_DIR/mqtt_bridge.py" \
+       "$SCRIPT_DIR/ui_config.py" \
+       "$SCRIPT_DIR/keepalive.py" \
+       "$SSH_HOST:$INSTALL_DIR/"
 
-if [ "$FULL_INSTALL" = true ]; then
-    # Full install: create/update services
-    echo ">>> Running full install..."
-    ssh "$SSH_HOST" "chmod +x $REMOTE_DIR/main.py $REMOTE_DIR/install.sh && cd $REMOTE_DIR && ./install.sh"
-else
-    # Quick update: just restart the service
-    # Note: keepalive removed - it was causing issues and the restart is fast enough
-    echo ">>> Restarting service..."
-    ssh "$SSH_HOST" "svc -t /service/inverter-control 2>/dev/null || true"
-    #ssh "$SSH_HOST" "svc -t /service/inverter-healthcheck 2>/dev/null || true"
+# Copy secrets.py if exists
+if [ -f "$SCRIPT_DIR/secrets.py" ]; then
+    echo ">>> Copying secrets.py..."
+    scp -q "$SCRIPT_DIR/secrets.py" "$SSH_HOST:$INSTALL_DIR/"
+    scp -q "$SCRIPT_DIR/secrets.py" "$SSH_HOST:$SETUP_OPTIONS_DIR/"
 fi
 
-# Wait for service to come up
-echo ">>> Waiting for service..."
+# Copy version file
+if [ -f "$SCRIPT_DIR/version" ]; then
+    scp -q "$SCRIPT_DIR/version" "$SSH_HOST:$INSTALL_DIR/"
+fi
+
+# Restart service
+echo ">>> Restarting service..."
+ssh "$SSH_HOST" "svc -t /service/inverter-control 2>/dev/null || true"
+
+# Wait and check status
 sleep 2
-
-# Verify service is running and responding
-if ssh "$SSH_HOST" "curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/api/state" | grep -q "200"; then
-    echo "    Service OK"
-else
-    echo "    Warning: Service may still be starting..."
-fi
-
+echo ">>> Service status:"
 ssh "$SSH_HOST" "svstat /service/inverter-control"
 
 echo ""
 echo "=============================================="
 echo "  Deployment Complete!"
 echo "=============================================="
-echo ""
-echo "Quick deploy (code only):  ./deploy.sh"
-echo "Full install (services):   ./deploy.sh Cerbo --full"
-echo ""

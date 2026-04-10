@@ -77,6 +77,7 @@ from config import (
 )
 from victron import get_victron
 from homeassistant import get_ha
+from console_server import start_server as start_console_server, stop_server as stop_console_server, broadcast_line
 
 # MQTT bridge for remote dashboard (optional)
 try:
@@ -747,6 +748,7 @@ class InverterController:
             # Format and print console output
             line = self.format_console_output(sys_data, setpoint, flags)
             print(line)
+            broadcast_line(line)
             
             # Update state for MQTT bridge
             self.update_state(sys_data, setpoint)
@@ -841,6 +843,9 @@ def _main_inner():
         controller.run_cycle()
         return
     
+    # Start TCP console server for remote monitoring
+    start_console_server()
+    
     # Main loop
     print("Starting control loop...")
     print("-" * 80)
@@ -872,6 +877,7 @@ def _main_inner():
         print("\nShutting down...")
     finally:
         logger.info("Inverter Control shutting down")
+        stop_console_server()
         if mqtt_bridge:
             mqtt_bridge.disconnect()
         controller.ha.stop()
