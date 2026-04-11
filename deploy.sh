@@ -32,7 +32,8 @@ python3 -m py_compile \
     "$SCRIPT_DIR/mqtt_bridge.py" \
     "$SCRIPT_DIR/ui_config.py" \
     "$SCRIPT_DIR/keepalive.py" \
-    "$SCRIPT_DIR/console_server.py"
+    "$SCRIPT_DIR/console_server.py" \
+    "$SCRIPT_DIR/log-forwarder.py"
 echo "    Syntax OK"
 
 # Create directories on remote
@@ -49,7 +50,15 @@ scp -q "$SCRIPT_DIR/main.py" \
        "$SCRIPT_DIR/ui_config.py" \
        "$SCRIPT_DIR/keepalive.py" \
        "$SCRIPT_DIR/console_server.py" \
+       "$SCRIPT_DIR/log-forwarder.py" \
        "$SSH_HOST:$INSTALL_DIR/"
+
+# Copy log-forwarder service
+echo ">>> Setting up log-forwarder service..."
+ssh "$SSH_HOST" "mkdir -p $INSTALL_DIR/service/log-forwarder"
+scp -q "$SCRIPT_DIR/service/log-forwarder/run" "$SSH_HOST:$INSTALL_DIR/service/log-forwarder/"
+ssh "$SSH_HOST" "chmod +x $INSTALL_DIR/service/log-forwarder/run"
+ssh "$SSH_HOST" "ln -sf $INSTALL_DIR/service/log-forwarder /service/ 2>/dev/null || true"
 
 # Copy secrets.py if exists
 if [ -f "$SCRIPT_DIR/secrets.py" ]; then
