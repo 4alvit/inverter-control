@@ -26,9 +26,9 @@ def get_ui_config() -> dict:
             {'id': 'laundry', 'label': 'LAUNDRY', 'entity': 'switch.laundry_zigbee_switch', 'state_key': 'laundry_outlet'},
         ],
         'batteries': [
-            {'id': 'virtual', 'name': 'Virtual Battery', 'show_current': True, 'show_power': True},
             {'id': 'chain1', 'name': 'JBD Chain 1', 'show_current': True, 'show_power': True},
             {'id': 'chain2', 'name': 'JBD Chain 2', 'show_current': True, 'show_power': True},
+            {'id': 'virtual', 'name': 'Virtual Battery', 'show_current': True, 'show_power': True},
         ],
         'solar_sources': {
             'mppt_names': {0: 'MPPT-290', 1: 'MPPT-291', 2: 'MPPT-292'},
